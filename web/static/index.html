@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enquête - supervision SMA</title>
+<style>
+  :root {
+    --fond: #0f1419; --panneau: #171d24; --bord: #26303b; --texte: #d9e1e8; --discret: #7d8b99;
+    --altruiste: #34c77b; --neutre: #4c8dff; --egoiste: #ff9f43;
+    --pomme: #e5484d; --vache: #f5d90a; --monde: #11171d; --accent: #4c8dff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--bord); }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  header .sous-titre { color: var(--discret); font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px 20px; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  .carte { background: var(--panneau); border: 1px solid var(--bord); border-radius: 10px; padding: 14px; }
+  .carte h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--discret); margin: 0 0 10px; font-weight: 600; }
+  #monde { width: 100%; height: auto; display: block; background: var(--monde); border-radius: 6px; }
+  .colonne { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .barre-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+  button { background: #222b35; color: var(--texte); border: 1px solid var(--bord); border-radius: 7px;
+           padding: 7px 12px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.principal { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; min-width: 108px; }
+  label { color: var(--discret); display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+  input[type=range] { width: 110px; accent-color: var(--accent); }
+  .legende { display: flex; flex-wrap: wrap; gap: 14px; color: var(--discret); font-size: 12.5px; margin-left: auto; }
+  .legende span { display: inline-flex; align-items: center; gap: 6px; }
+  .pastille { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .carre { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }
+  .chiffres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .chiffre { background: #1c232b; border-radius: 8px; padding: 10px; }
+  .chiffre .valeur { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .chiffre .nom { font-size: 12px; color: var(--discret); }
+  .ligne-stats { display: flex; justify-content: space-between; color: var(--discret); font-size: 13px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .ligne-stats b { color: var(--texte); font-weight: 600; }
+  .progression { height: 4px; background: #222b35; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .progression div { height: 100%; background: var(--accent); width: 0; }
+  #courbe { width: 100%; height: 170px; display: block; }
+  #journal { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto;
+             font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+  #journal li { padding: 3px 0; border-bottom: 1px solid #1e262e; color: #b7c2cc; overflow-wrap: anywhere; }
+  #journal li .t { color: var(--discret); margin-right: 6px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Enquête — coopération dans un système multi-agents</h1>
+  <span class="sous-titre">modèle influence/réaction · protocole de négociation · supervision temps réel</span>
+</header>
+<main>
+  <div class="colonne">
+    <section class="carte">
+      <canvas id="monde" width="1000" height="700" aria-label="Carte du monde simulé"></canvas>
+      <div class="barre-outils">
+        <button id="lecture" class="principal">▶ Démarrer</button>
+        <button id="jour">Jour suivant</button>
+        <button id="reinit">Réinitialiser</button>
+        <label>Vitesse <input id="vitesse" type="range" min="0" max="200" value="170"></label>
+        <label><input id="vision" type="checkbox"> champs de vision</label>
+        <div class="legende">
+          <span><i class="pastille" style="background:var(--altruiste)"></i>altruiste</span>
+          <span><i class="pastille" style="background:var(--neutre)"></i>neutre</span>
+          <span><i class="pastille" style="background:var(--egoiste)"></i>égoïste</span>
+          <span><i class="carre" style="background:var(--pomme)"></i>pomme</span>
+          <span><i class="carre" style="background:var(--vache)"></i>vache</span>
+          <span>  binôme engagé</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="colonne">
+    <section class="carte">
+      <h2>Population</h2>
+      <div class="chiffres">
+        <div class="chiffre"><div class="valeur" id="n-altruiste" style="color:var(--altruiste)">–</div><div class="nom">altruistes</div></div>
+        <div class="chiffre"><div class="valeur" id="n-neutre" style="color:var(--neutre)">–</div><div class="nom">neutres</div></div>
+        <div class="chiffre"><div class="valeur" id="n-egoiste" style="color:var(--egoiste)">–</div><div class="nom">égoïstes</div></div>
+      </div>
+      <div class="ligne-stats"><span>Jour <b id="jour-num">1</b></span><span>tick <b id="tick">0</b></span><span>binômes <b id="binomes">0</b></span></div>
+      <div class="progression"><div id="avancement"></div></div>
+      <div class="ligne-stats"><span>pommes <b id="pommes">0</b></span><span>vaches partagées <b id="partagees">0</b></span><span>gâchées <b id="gachees">0</b></span></div>
+    </section>
+    <section class="carte">
+      <h2>Évolution par jour</h2>
+      <canvas id="courbe" width="700" height="340" aria-label="Population par type et par jour"></canvas>
+      <div class="ligne-stats"><span>fin de journée</span><a href="/api/historique.csv">exporter le CSV</a></div>
+    </section>
+    <section class="carte">
+      <h2>Journal des interactions</h2>
+      <ul id="journal"></ul>
+    </section>
+  </div>
+</main>
+<script>
+"use strict";
+const COULEURS = { altruiste: "#34c77b", neutre: "#4c8dff", egoiste: "#ff9f43" };
+const TYPES = ["altruiste", "neutre", "egoiste"];
+const $ = id => document.getElementById(id);
+const monde = $("monde"), ctx = monde.getContext("2d");
+const courbe = $("courbe"), cctx = courbe.getContext("2d");
+let etat = null, dernierJournal = "";
+
+async function commande(corps) {
+  await fetch("/api/commande", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps) });
+  rafraichir();
+}
+$("lecture").onclick = () => commande({ action: etat && etat.en_pause ? "reprendre" : "pause" });
+$("jour").onclick = () => commande({ action: "jour" });
+$("reinit").onclick = () => commande({ action: "reinit" });
+$("vitesse").oninput = e => commande({ action: "vitesse", delai_ms: 200 - Number(e.target.value) });
+
+function dessinerMonde(s) {
+  if (monde.width !== s.largeur) { monde.width = s.largeur; monde.height = s.hauteur; }
+  ctx.clearRect(0, 0, monde.width, monde.height);
+
+  // grille légère
+  ctx.strokeStyle = "rgba(255,255,255,0.035)"; ctx.lineWidth = 1;
+  for (let x = 0; x <= s.largeur; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, s.hauteur); ctx.stroke(); }
+  for (let y = 0; y <= s.hauteur; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(s.largeur, y); ctx.stroke(); }
+
+  if ($("vision").checked) {
+    for (const a of s.agents) {
+      ctx.beginPath(); ctx.arc(a.pos.x, a.pos.y, s.champ_de_vision, 0, 2 * Math.PI);
+      ctx.fillStyle = COULEURS[a.type] + "0d"; ctx.fill();
+    }
+  }
+
+  const objets = new Map(s.objets.map(o => [o.id, o]));
+  for (const o of s.objets) {
+    const c = o.type === "vache" ? 14 : 8;
+    ctx.fillStyle = o.type === "vache" ? "#f5d90a" : "#e5484d";
+    ctx.fillRect(o.pos.x - c / 2, o.pos.y - c / 2, c, c);
+  }
+
+  // binômes engagés : trait vers la vache visée ; propositions en attente : pointillés
+  ctx.lineWidth = 1.5;
+  for (const a of s.agents) {
+    const v = objets.get(a.vache);
+    if (!v || a.etat === "libre") continue;
+    ctx.setLineDash(a.etat === "engage" ? [] : [3, 4]);
+    ctx.strokeStyle = a.etat === "engage" ? "rgba(245,217,10,0.75)" : "rgba(200,210,220,0.35)";
+    ctx.beginPath(); ctx.moveTo(a.pos.x, a.pos.y); ctx.lineTo(v.pos.x, v.pos.y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  for (const a of s.agents) {
+    ctx.beginPath(); ctx.arc(a.pos.x, a.pos.y, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = COULEURS[a.type]; ctx.fill();
+    if (a.etat !== "libre") { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+}
+
+function dessinerCourbe(historique) {
+  const w = courbe.width, h = courbe.height, m = { g: 44, d: 12, h: 12, b: 34 };
+  cctx.clearRect(0, 0, w, h);
+  const n = historique.length;
+  const max = Math.max(10, ...historique.map(j => Math.max(...j.population)));
+  const x = i => m.g + (n <= 1 ? 0 : i * (w - m.g - m.d) / (n - 1));
+  const y = v => h - m.b - v * (h - m.h - m.b) / max;
+
+  cctx.font = "20px system-ui, sans-serif"; cctx.fillStyle = "#7d8b99"; cctx.strokeStyle = "#26303b"; cctx.lineWidth = 1;
+  for (const v of [0, Math.round(max / 2), max]) {
+    cctx.beginPath(); cctx.moveTo(m.g, y(v)); cctx.lineTo(w - m.d, y(v)); cctx.stroke();
+    cctx.textAlign = "right"; cctx.fillText(v, m.g - 8, y(v) + 7);
+  }
+  cctx.textAlign = "center";
+  cctx.fillText("jour " + (n - 1), w - m.d - 30, h - 6);
+  cctx.fillText("0", m.g, h - 6);
+
+  TYPES.forEach((t, k) => {
+    cctx.strokeStyle = COULEURS[t]; cctx.lineWidth = 4; cctx.beginPath();
+    historique.forEach((j, i) => i ? cctx.lineTo(x(i), y(j.population[k])) : cctx.moveTo(x(i), y(j.population[k])));
+    cctx.stroke();
+  });
+}
+
+function afficherJournal(journal) {
+  const cle = journal.length + ":" + (journal.length ? journal[journal.length - 1].tick + journal[journal.length - 1].texte : "");
+  if (cle === dernierJournal) return;
+  dernierJournal = cle;
+  const ul = $("journal");
+  ul.replaceChildren(...journal.slice().reverse().map(e => {
+    const li = document.createElement("li");
+    const t = document.createElement("span"); t.className = "t"; t.textContent = "t" + e.tick;
+    li.append(t, e.texte);
+    return li;
+  }));
+}
+
+function afficher(s) {
+  etat = s;
+  dessinerMonde(s);
+  const pop = s.courant.population;
+  TYPES.forEach((t, k) => $("n-" + t).textContent = pop[k]);
+  $("jour-num").textContent = s.jour;
+  $("tick").textContent = s.tick;
+  $("binomes").textContent = Math.floor(s.agents.filter(a => a.etat === "engage").length / 2);
+  $("pommes").textContent = s.courant.pommes_mangees;
+  $("partagees").textContent = s.courant.vaches_partagees;
+  $("gachees").textContent = s.courant.vaches_gachees;
+  $("avancement").style.width = (100 * s.tick_dans_jour / s.ticks_par_jour) + "%";
+  $("lecture").textContent = s.en_pause ? "▶ Démarrer" : "❚❚ Pause";
+  dessinerCourbe(s.historique);
+  afficherJournal(s.journal || []);
+}
+
+async function rafraichir() {
+  try {
+    const r = await fetch("/api/etat", { cache: "no-store" });
+    if (r.ok) afficher(await r.json());
+  } catch (e) { /* serveur arrêté : on réessaie */ }
+}
+(async function boucle() { await rafraichir(); setTimeout(boucle, 80); })();
+</script>
+</body>
+</html>

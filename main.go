@@ -3,7 +3,7 @@
 //
 //	go run .                          tableau de bord web sur http://localhost:8080
 //	go run . -headless -jours 40 -csv out.csv      simulation rapide, résumé + CSV
-//	go run . -llm mistral             décisions de négociation par un LLM local (Ollama)
+//	go run . -llm qwen2.5:1.5b             décisions de négociation par un LLM local (Ollama)
 package main
 
 import (
@@ -30,7 +30,7 @@ func main() {
 	jours := flag.Int("jours", 30, "nombre de jours simulés (mode -headless)")
 	fichierCSV := flag.String("csv", "", "fichier CSV de sortie (mode -headless)")
 	adresse := flag.String("adresse", "localhost:8080", "adresse du tableau de bord web")
-	modele := flag.String("llm", "", "modèle Ollama pour les négociations; vide = règles fixes")
+	modele := flag.String("llm", "qwen2.5:1.5b", "modèle Ollama pour les négociations; vide = règles fixes")
 	urlLLM := flag.String("llm-url", "http://localhost:11434", "URL du serveur Ollama")
 	journalLLM := flag.String("llm-journal", "decisions_llm.jsonl", "journal des décisions du LLM")
 	flag.Parse()

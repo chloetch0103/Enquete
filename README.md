@@ -14,20 +14,20 @@ Aucune dépendance externe (bibliothèque standard Go >= 1.22).
 go run .                                   # tableau de bord : http://localhost:8080
 go run . -headless -jours 40 -csv out.csv  # simulation rapide (sans interface ==> pas de serveur web ni de tableau de bord) + export CSV
 go run . -seed 7 -altruistes 20 -egoistes 5
-go run . -llm mistral                      # négociations décidées par un LLM local (Ollama)
+go run . -llm qwen2.5:1.5b                      # négociations décidées par un LLM local (Ollama)
 go test -race ./...                        # tests + détecteur de courses
 ```
 
 Pour le mode LLM : installer Ollama, puis `ollama pull qwen2.5:1.5b`.
 Chaque décision est journalisée dans `decisions_llm.jsonl` (décision, justification, latence, repli éventuel).
-Les résultats de la simaulation avec LLM n'ont pas pu être analysées à cause d'un problème de latence.
+Les résultats de la simulation avec LLM n'ont pas pu être analysé à cause d'un problème de latence.
 
 ## Architecture
 
 ```
 main.go              options en ligne de commande, mode web ou sans interface
 sma/
-  config.go          tous les paramètres (pour ne plus avoir de constantes et de variables éparpillées comme dans la version 1
+  config.go          tous les paramètres (pour ne plus avoir de constantes et de variables éparpillées comme dans la version 1)
   types.go           Pos, TypeAgent, Objet, Etat
   agent.go           perception --> délibération --> influence (intention de l'agent, c'est l'environnement qui décide s'il y a changement)
   strategie.go       interface Strategie + comportements à règles
